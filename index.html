@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pose Beat Blaster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=JetBrains+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="kicker">TFJS / Pose Inspired</p>
+        <h1>Pose Beat Blaster</h1>
+        <p>Raise left/right/both hands to blast rhythm notes. Keyboard fallback: <kbd>A</kbd>/<kbd>S</kbd>/<kbd>D</kbd>.</p>
+      </header>
+
+      <section class="layout">
+        <div class="stage-wrap">
+          <canvas id="gameCanvas" width="960" height="540" aria-label="pose rhythm game"></canvas>
+          <video id="previewVideo" autoplay playsinline muted hidden></video>
+        </div>
+
+        <aside class="panel">
+          <button id="startBtn" type="button">Start Session</button>
+          <button id="stopBtn" type="button" disabled>Stop Session</button>
+          <button id="poseBtn" type="button">Enable Pose Control</button>
+
+          <div class="stats">
+            <p>Score <strong id="score">0</strong></p>
+            <p>Combo <strong id="combo">0</strong></p>
+            <p>Hits <strong id="hits">0</strong></p>
+            <p>Misses <strong id="misses">0</strong></p>
+            <p>Lane Mode <strong id="laneMode">keyboard</strong></p>
+          </div>
+
+          <p id="status" class="meta">Press Start Session to begin.</p>
+          <p class="meta">Hit zone is the bright line near the bottom.</p>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
