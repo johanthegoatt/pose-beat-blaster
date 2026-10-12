@@ -7,6 +7,8 @@ import {
   applyLaneInputs,
   newlyPressed,
   spawnIntervalFor,
+  poseArms,
+  armsToLanes,
 } from "../src/rhythmEngine.js";
 
 test("spawnBeat assigns lane from random source", () => {
@@ -70,4 +72,39 @@ test("the speed-up depends on hits, not on frames", () => {
   assert.equal(spawnIntervalFor(0), 700);
   assert.equal(spawnIntervalFor(39), 640);
   assert.equal(spawnIntervalFor(500), 380);
+});
+
+function pose(leftWristY, rightWristY) {
+  const points = [];
+  points[11] = { y: 0.4 };
+  points[12] = { y: 0.4 };
+  points[15] = { y: leftWristY };
+  points[16] = { y: rightWristY };
+  return points;
+}
+
+test("an arm near shoulder height does not flicker between up and down", () => {
+  let arms = { left: false, right: false };
+  // Wrist wobbling just above the shoulder: never clearly raised.
+  for (const y of [0.37, 0.36, 0.38, 0.37]) {
+    arms = poseArms(pose(y, 0.6), arms);
+    assert.equal(arms.left, false);
+  }
+  arms = poseArms(pose(0.3, 0.6), arms);
+  assert.equal(arms.left, true);
+  // Once up, the same wobble keeps it up.
+  for (const y of [0.37, 0.36, 0.38]) {
+    arms = poseArms(pose(y, 0.6), arms);
+    assert.equal(arms.left, true);
+  }
+  arms = poseArms(pose(0.45, 0.6), arms);
+  assert.equal(arms.left, false);
+});
+
+test("both arms press the middle lane only", () => {
+  assert.deepEqual(armsToLanes({ left: true, right: true }), [1]);
+  assert.deepEqual(armsToLanes({ left: true, right: false }), [0]);
+  assert.deepEqual(armsToLanes({ left: false, right: true }), [2]);
+  assert.deepEqual(armsToLanes({ left: false, right: false }), []);
+  assert.deepEqual(armsToLanes(poseArms(undefined)), []);
 });

@@ -1,4 +1,11 @@
-import { createRhythmState, stepRhythm, applyLaneInputs, newlyPressed } from "./src/rhythmEngine.js";
+import {
+  createRhythmState,
+  stepRhythm,
+  applyLaneInputs,
+  newlyPressed,
+  poseArms,
+  armsToLanes,
+} from "./src/rhythmEngine.js";
 
 const elements = {
   canvas: document.getElementById("gameCanvas"),
@@ -26,6 +33,7 @@ const appState = {
   stream: null,
   keyboardLanes: new Set(),
   heldLanes: [],
+  arms: { left: false, right: false },
 };
 
 function setStatus(text) {
@@ -79,29 +87,8 @@ function syncStats() {
 }
 
 function derivePoseLanes(result) {
-  if (!result?.landmarks?.length) {
-    return [];
-  }
-
-  const points = result.landmarks[0];
-  const leftShoulder = points[11];
-  const rightShoulder = points[12];
-  const leftWrist = points[15];
-  const rightWrist = points[16];
-
-  if (!leftShoulder || !rightShoulder || !leftWrist || !rightWrist) {
-    return [];
-  }
-
-  const active = [];
-  const leftUp = leftWrist.y < leftShoulder.y - 0.03;
-  const rightUp = rightWrist.y < rightShoulder.y - 0.03;
-
-  if (leftUp) active.push(0);
-  if (rightUp) active.push(2);
-  if (leftUp && rightUp) active.push(1);
-
-  return active;
+  appState.arms = poseArms(result?.landmarks?.[0], appState.arms);
+  return armsToLanes(appState.arms);
 }
 
 function currentActiveLanes() {

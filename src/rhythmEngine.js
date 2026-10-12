@@ -122,3 +122,37 @@ export function applyLaneInputs(state, activeLanes) {
     score: state.score + hitCount * (22 + clamp(nextCombo, 0, 24)),
   };
 }
+
+// Which lanes a pose is pressing. MediaPipe Pose landmarks 11/12 are the
+// shoulders and 15/16 the wrists, named from the player's side. An arm
+// counts as up once the wrist is clearly above the shoulder (RAISE) and as
+// down only once it drops back to shoulder height (LOWER). With a single
+// threshold, a wrist resting near it flickered up and down from landmark
+// noise, and every flicker was a new press.
+const RAISE = 0.06;
+const LOWER = 0.0;
+
+export function poseArms(points, previous = { left: false, right: false }) {
+  const ls = points?.[11];
+  const rs = points?.[12];
+  const lw = points?.[15];
+  const rw = points?.[16];
+  if (!ls || !rs || !lw || !rw) {
+    return { left: false, right: false };
+  }
+  const isUp = (wrist, shoulder, wasUp) =>
+    wasUp ? wrist.y < shoulder.y - LOWER : wrist.y < shoulder.y - RAISE;
+  return {
+    left: isUp(lw, ls, previous.left),
+    right: isUp(rw, rs, previous.right),
+  };
+}
+
+// Left arm is the left lane, right arm the right lane, both arms the
+// middle. Both arms used to press all three lanes at once.
+export function armsToLanes({ left, right }) {
+  if (left && right) return [1];
+  if (left) return [0];
+  if (right) return [2];
+  return [];
+}
