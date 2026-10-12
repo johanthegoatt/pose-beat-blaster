@@ -20,6 +20,22 @@ export function createRhythmState({ width = 960, height = 540 } = {}) {
   };
 }
 
+// Beats come 20 ms closer together for every 10 hits, down to 380 ms. This
+// used to subtract 1 ms on every frame while the hit count sat on a
+// multiple of 10, so the speed-up depended on frame rate and how long you
+// waited, and one quiet second at 10 hits took 60 ms off.
+export function spawnIntervalFor(hits) {
+  return Math.max(380, 700 - Math.floor(hits / 10) * 20);
+}
+
+// Lanes that went from not pressed to pressed this frame. A rhythm game
+// scores the moment you hit, so holding a key (or an arm up) must not
+// collect every beat that slides past.
+export function newlyPressed(previous, current) {
+  const before = new Set(previous);
+  return [...new Set(current)].filter((lane) => !before.has(lane));
+}
+
 export function spawnBeat(state, randomFn = Math.random) {
   const lane = Math.floor(randomFn() * 3);
   const beat = {
@@ -62,9 +78,7 @@ export function stepRhythm(state, dtMs, randomFn = Math.random) {
 
   next.beats = active;
 
-  if (next.hits > 0 && next.hits % 10 === 0) {
-    next.spawnEveryMs = Math.max(380, next.spawnEveryMs - 1);
-  }
+  next.spawnEveryMs = spawnIntervalFor(next.hits);
 
   return next;
 }

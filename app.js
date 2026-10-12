@@ -1,4 +1,4 @@
-import { createRhythmState, stepRhythm, applyLaneInputs } from "./src/rhythmEngine.js";
+import { createRhythmState, stepRhythm, applyLaneInputs, newlyPressed } from "./src/rhythmEngine.js";
 
 const elements = {
   canvas: document.getElementById("gameCanvas"),
@@ -25,6 +25,7 @@ const appState = {
   poseModelLoading: false,
   stream: null,
   keyboardLanes: new Set(),
+  heldLanes: [],
 };
 
 function setStatus(text) {
@@ -133,7 +134,9 @@ function animate(timestamp) {
 
   if (appState.running) {
     appState.engine = stepRhythm(appState.engine, dt);
-    appState.engine = applyLaneInputs(appState.engine, currentActiveLanes());
+    const held = currentActiveLanes();
+    appState.engine = applyLaneInputs(appState.engine, newlyPressed(appState.heldLanes, held));
+    appState.heldLanes = held;
   }
 
   drawScene();
