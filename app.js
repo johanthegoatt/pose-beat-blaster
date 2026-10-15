@@ -41,6 +41,7 @@ const appState = {
   best: loadBest(),
   heldLanes: [],
   arms: { left: false, right: false },
+  lastPose: null,
 };
 
 function loadBest() {
@@ -114,6 +115,44 @@ function drawScene() {
     context.arc(laneX(beat.lane, engine.width), beat.y, 18, 0, Math.PI * 2);
     context.fill();
   }
+
+  drawPoseInset(engine);
+}
+
+// A mirrored camera inset with the tracked shoulders and wrists, so players
+// can see whether an arm counts as up before the beat arrives.
+function drawPoseInset(engine) {
+  const video = elements.previewVideo;
+  if (appState.controlMode !== "pose" || !appState.stream || video.readyState < 2) return;
+  const w = 224;
+  const h = Math.round((w * (video.videoHeight || 9)) / (video.videoWidth || 16));
+  const x0 = engine.width - w - 14;
+  const y0 = 14;
+  context.save();
+  context.translate(x0 + w, y0);
+  context.scale(-1, 1);
+  context.globalAlpha = 0.85;
+  context.drawImage(video, 0, 0, w, h);
+  context.globalAlpha = 1;
+  const pose = appState.lastPose;
+  if (pose?.[11] && pose?.[12]) {
+    context.strokeStyle = "rgba(255,255,255,0.8)";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(pose[11].x * w, pose[11].y * h);
+    context.lineTo(pose[12].x * w, pose[12].y * h);
+    context.stroke();
+    for (const [index, up] of [[15, appState.arms.left], [16, appState.arms.right]]) {
+      if (!pose[index]) continue;
+      context.fillStyle = up ? "#7cf0c5" : "#ff6b8a";
+      context.beginPath();
+      context.arc(pose[index].x * w, pose[index].y * h, 7, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  context.restore();
+  context.strokeStyle = "rgba(255,255,255,0.5)";
+  context.strokeRect(x0, y0, w, h);
 }
 
 function syncStats() {
@@ -125,6 +164,7 @@ function syncStats() {
 }
 
 function derivePoseLanes(result) {
+  appState.lastPose = result?.landmarks?.[0] ?? null;
   appState.arms = poseArms(result?.landmarks?.[0], appState.arms);
   return armsToLanes(appState.arms);
 }

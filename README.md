@@ -5,6 +5,7 @@ Pose Beat Blaster is a rhythm lane game driven by pose gestures with keyboard fa
 
 ## Features
 - Three-lane rhythm gameplay with dynamic beat spawning
+- A mirrored camera inset in pose mode marks each wrist green when it counts as raised
 - Pose-triggered lane inputs using MediaPipe Pose Landmarker: left arm, right arm, or both for the middle lane, with separate raise and lower heights so a wobbling wrist does not fire twice
 - Hits count on the press, so holding a key or an arm up does not collect every beat
 - Beats speed up by 20 ms every 10 hits, down to 380 ms apart
