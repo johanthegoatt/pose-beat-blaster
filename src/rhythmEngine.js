@@ -17,7 +17,20 @@ export function createRhythmState({ width = 960, height = 540 } = {}) {
     combo: 0,
     hits: 0,
     misses: 0,
+    whiffs: 0,
+    judgements: [],
   };
+}
+
+// Distance from the hit line, in pixels, for each grade and its base score.
+export const GRADES = [
+  { name: "perfect", within: 10, points: 50 },
+  { name: "great", within: 22, points: 35 },
+  { name: "good", within: 34, points: 22 },
+];
+
+export function judge(distancePx) {
+  return GRADES.find((grade) => distancePx <= grade.within) ?? null;
 }
 
 // Beats come 20 ms closer together for every 10 hits, down to 380 ms. This
@@ -83,43 +96,49 @@ export function stepRhythm(state, dtMs, randomFn = Math.random) {
   return next;
 }
 
+// Each pressed lane takes the beat nearest the line in that lane. A press
+// with nothing in reach is a whiff and breaks the combo; without that,
+// mashing every lane scored as well as playing.
 export function applyLaneInputs(state, activeLanes) {
   if (!activeLanes || activeLanes.length === 0) {
     return state;
   }
 
-  const laneSet = new Set(activeLanes);
-  const remaining = [];
-  const matchedByLane = new Map();
+  let { score, combo, hits, whiffs } = state;
+  const judgements = [];
+  const taken = new Set();
 
-  for (const beat of state.beats) {
-    const distance = Math.abs(beat.y - state.hitLineY);
-    const isMatchWindow = distance <= state.hitWindowPx;
-
-    if (laneSet.has(beat.lane) && isMatchWindow && !matchedByLane.has(beat.lane)) {
-      matchedByLane.set(beat.lane, beat);
+  for (const lane of new Set(activeLanes)) {
+    let best = null;
+    for (const beat of state.beats) {
+      if (beat.lane !== lane) continue;
+      const distance = Math.abs(beat.y - state.hitLineY);
+      if (distance <= state.hitWindowPx && (!best || distance < best.distance)) {
+        best = { beat, distance };
+      }
+    }
+    if (!best) {
+      whiffs += 1;
+      combo = 0;
+      judgements.push({ lane, grade: "whiff", at: state.elapsedMs });
       continue;
     }
-
-    remaining.push(beat);
+    const grade = judge(best.distance);
+    taken.add(best.beat);
+    hits += 1;
+    combo += 1;
+    score += grade.points + clamp(combo, 0, 24);
+    judgements.push({ lane, grade: grade.name, at: state.elapsedMs });
   }
-
-  if (matchedByLane.size === 0) {
-    return {
-      ...state,
-      beats: remaining,
-    };
-  }
-
-  const hitCount = matchedByLane.size;
-  const nextCombo = state.combo + hitCount;
 
   return {
     ...state,
-    beats: remaining,
-    hits: state.hits + hitCount,
-    combo: nextCombo,
-    score: state.score + hitCount * (22 + clamp(nextCombo, 0, 24)),
+    beats: state.beats.filter((beat) => !taken.has(beat)),
+    score,
+    combo,
+    hits,
+    whiffs,
+    judgements: [...state.judgements, ...judgements].slice(-12),
   };
 }
 

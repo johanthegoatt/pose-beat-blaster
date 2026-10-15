@@ -9,6 +9,7 @@ import {
   spawnIntervalFor,
   poseArms,
   armsToLanes,
+  judge,
 } from "../src/rhythmEngine.js";
 
 test("spawnBeat assigns lane from random source", () => {
@@ -107,4 +108,42 @@ test("both arms press the middle lane only", () => {
   assert.deepEqual(armsToLanes({ left: false, right: true }), [2]);
   assert.deepEqual(armsToLanes({ left: false, right: false }), []);
   assert.deepEqual(armsToLanes(poseArms(undefined)), []);
+});
+
+test("closer to the line grades and scores higher", () => {
+  assert.equal(judge(0).name, "perfect");
+  assert.equal(judge(15).name, "great");
+  assert.equal(judge(30).name, "good");
+  assert.equal(judge(40), null);
+
+  const at = (offset) => {
+    const state = createRhythmState();
+    state.beats = [{ id: "b", lane: 0, y: state.hitLineY + offset }];
+    return applyLaneInputs(state, [0]);
+  };
+  assert.ok(at(2).score > at(15).score);
+  assert.ok(at(15).score > at(30).score);
+  assert.equal(at(2).judgements.at(-1).grade, "perfect");
+});
+
+test("a press with nothing in reach is a whiff and breaks the combo", () => {
+  const state = createRhythmState();
+  state.combo = 7;
+  state.beats = [{ id: "far", lane: 0, y: 40 }];
+  const next = applyLaneInputs(state, [0, 2]);
+  assert.equal(next.combo, 0);
+  assert.equal(next.whiffs, 2);
+  assert.equal(next.hits, 0);
+  assert.equal(next.beats.length, 1);
+});
+
+test("a press takes the beat nearest the line, not the first one spawned", () => {
+  const state = createRhythmState();
+  state.beats = [
+    { id: "early", lane: 1, y: state.hitLineY + 30 },
+    { id: "centred", lane: 1, y: state.hitLineY + 1 },
+  ];
+  const next = applyLaneInputs(state, [1]);
+  assert.deepEqual(next.beats.map((b) => b.id), ["early"]);
+  assert.equal(next.judgements.at(-1).grade, "perfect");
 });

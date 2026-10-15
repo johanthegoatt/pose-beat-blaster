@@ -71,6 +71,24 @@ function drawScene() {
   context.lineTo(engine.width, engine.hitLineY);
   context.stroke();
 
+  const colours = { perfect: "#ffe066", great: "#7cf0c5", good: "#b9c3ff", whiff: "#ff6b8a" };
+  context.textAlign = "center";
+  context.font = "800 26px Manrope, sans-serif";
+  const shown = new Set();
+  for (const mark of [...engine.judgements].reverse()) {
+    const age = engine.elapsedMs - mark.at;
+    if (age > 500 || shown.has(mark.lane)) continue;
+    shown.add(mark.lane);
+    const fade = 1 - age / 500;
+    const x = laneX(mark.lane, engine.width);
+    context.globalAlpha = fade * 0.35;
+    context.fillStyle = colours[mark.grade];
+    context.fillRect(mark.lane * laneWidth, engine.hitLineY - 40, laneWidth, 80);
+    context.globalAlpha = fade;
+    context.fillText(mark.grade.toUpperCase(), x, engine.hitLineY - 52 - age * 0.06);
+  }
+  context.globalAlpha = 1;
+
   for (const beat of engine.beats) {
     context.fillStyle = beat.lane === 1 ? "#ff6b8a" : "#5d5fef";
     context.beginPath();
@@ -83,7 +101,7 @@ function syncStats() {
   elements.score.textContent = String(appState.engine.score);
   elements.combo.textContent = String(appState.engine.combo);
   elements.hits.textContent = String(appState.engine.hits);
-  elements.misses.textContent = String(appState.engine.misses);
+  elements.misses.textContent = String(appState.engine.misses + appState.engine.whiffs);
 }
 
 function derivePoseLanes(result) {
