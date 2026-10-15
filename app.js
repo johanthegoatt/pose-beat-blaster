@@ -22,6 +22,7 @@ const elements = {
   misses: document.getElementById("misses"),
   laneMode: document.getElementById("laneMode"),
   muteBtn: document.getElementById("muteBtn"),
+  best: document.getElementById("best"),
   status: document.getElementById("status"),
 };
 
@@ -36,9 +37,23 @@ const appState = {
   poseModelLoading: false,
   stream: null,
   keyboardLanes: new Set(),
+  pointerLanes: new Map(),
+  best: loadBest(),
   heldLanes: [],
   arms: { left: false, right: false },
 };
+
+function loadBest() {
+  try {
+    return Number(localStorage.getItem("pbb:best")) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function manualLanes() {
+  return [...new Set([...appState.keyboardLanes, ...appState.pointerLanes.values()])];
+}
 
 function setStatus(text) {
   elements.status.textContent = text;
@@ -106,6 +121,7 @@ function syncStats() {
   elements.combo.textContent = String(appState.engine.combo);
   elements.hits.textContent = String(appState.engine.hits);
   elements.misses.textContent = String(appState.engine.misses + appState.engine.whiffs);
+  elements.best.textContent = String(Math.max(appState.best, appState.engine.score));
 }
 
 function derivePoseLanes(result) {
@@ -115,7 +131,7 @@ function derivePoseLanes(result) {
 
 function currentActiveLanes() {
   if (appState.controlMode === "keyboard") {
-    return [...appState.keyboardLanes];
+    return manualLanes();
   }
 
   if (!appState.poseModel || !appState.stream || elements.previewVideo.readyState < 2) {
@@ -129,7 +145,7 @@ function currentActiveLanes() {
     console.error(error);
     setControlMode("keyboard");
     setStatus("Pose tracking error. Switched to keyboard mode.");
-    return [...appState.keyboardLanes];
+    return manualLanes();
   }
 }
 
@@ -235,10 +251,20 @@ function startSession() {
 
 function stopSession() {
   appState.running = false;
+  const { score } = appState.engine;
+  if (score > appState.best) {
+    appState.best = score;
+    try {
+      localStorage.setItem("pbb:best", String(score));
+    } catch {}
+    setStatus(`New best: ${score}`);
+  } else {
+    setStatus(`Session stopped. Best ${appState.best}`);
+  }
+  syncStats();
   appState.lastFrameAt = 0;
   elements.startBtn.disabled = false;
   elements.stopBtn.disabled = true;
-  setStatus("Session stopped");
 }
 
 function stopCamera() {
@@ -265,7 +291,24 @@ elements.muteBtn.addEventListener("click", () => {
 });
 syncMute();
 
+// Tapping a lane on the canvas presses it, for phones and tablets without a
+// keyboard. Each finger is tracked so two-lane chords work.
+function laneAt(event) {
+  const rect = elements.canvas.getBoundingClientRect();
+  return Math.min(2, Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * 3)));
+}
+elements.canvas.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  sfx.unlock();
+  elements.canvas.setPointerCapture?.(event.pointerId);
+  appState.pointerLanes.set(event.pointerId, laneAt(event));
+});
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  elements.canvas.addEventListener(type, (event) => appState.pointerLanes.delete(event.pointerId));
+}
+
 document.addEventListener("keydown", (event) => {
+  if (event.repeat) return;
   if (event.key.toLowerCase() === "a") appState.keyboardLanes.add(0);
   if (event.key.toLowerCase() === "s") appState.keyboardLanes.add(1);
   if (event.key.toLowerCase() === "d") appState.keyboardLanes.add(2);
