@@ -6,6 +6,9 @@ import {
   poseArms,
   armsToLanes,
 } from "./src/rhythmEngine.js";
+import { createSfx } from "./src/sfx.js";
+
+const sfx = createSfx();
 
 const elements = {
   canvas: document.getElementById("gameCanvas"),
@@ -18,6 +21,7 @@ const elements = {
   hits: document.getElementById("hits"),
   misses: document.getElementById("misses"),
   laneMode: document.getElementById("laneMode"),
+  muteBtn: document.getElementById("muteBtn"),
   status: document.getElementById("status"),
 };
 
@@ -138,9 +142,14 @@ function animate(timestamp) {
   appState.lastFrameAt = timestamp;
 
   if (appState.running) {
-    appState.engine = stepRhythm(appState.engine, dt);
+    const before = appState.engine;
+    appState.engine = stepRhythm(before, dt);
+    if (appState.engine.misses > before.misses) sfx.miss();
+    if (appState.engine.beats.length > before.beats.length) sfx.tick();
     const held = currentActiveLanes();
+    const judged = appState.engine.judgements;
     appState.engine = applyLaneInputs(appState.engine, newlyPressed(appState.heldLanes, held));
+    appState.engine.judgements.filter((mark) => !judged.includes(mark)).forEach((mark) => sfx.judgement(mark));
     appState.heldLanes = held;
   }
 
@@ -215,6 +224,7 @@ async function enablePoseControl() {
 }
 
 function startSession() {
+  sfx.unlock();
   appState.engine = createRhythmState({ width: elements.canvas.width, height: elements.canvas.height });
   appState.running = true;
   appState.lastFrameAt = 0;
@@ -244,6 +254,16 @@ function stopCamera() {
 elements.startBtn.addEventListener("click", startSession);
 elements.stopBtn.addEventListener("click", stopSession);
 elements.poseBtn.addEventListener("click", enablePoseControl);
+
+function syncMute() {
+  elements.muteBtn.textContent = sfx.muted ? "Sound off" : "Sound on";
+  elements.muteBtn.setAttribute("aria-pressed", String(sfx.muted));
+}
+elements.muteBtn.addEventListener("click", () => {
+  sfx.toggle();
+  syncMute();
+});
+syncMute();
 
 document.addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "a") appState.keyboardLanes.add(0);

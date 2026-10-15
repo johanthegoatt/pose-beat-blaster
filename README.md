@@ -10,6 +10,7 @@ Pose Beat Blaster is a rhythm lane game driven by pose gestures with keyboard fa
 - Beats speed up by 20 ms every 10 hits, down to 380 ms apart
 - Hits graded perfect, great or good by distance from the line; pressing a lane with no beat in reach is a whiff and breaks the combo, so mashing doesn't pay
 - Keyboard fallback inputs (`A`, `S`, `D`)
+- Synthesised sounds: a note per lane that rises with the grade, a thud on whiffs and misses, a soft tick as each beat spawns; mute is remembered
 - Combo + score progression
 - Session start/stop control flow
 - Unit-tested rhythm engine
